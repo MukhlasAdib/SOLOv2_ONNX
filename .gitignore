@@ -1,3 +1,9 @@
+# This repo specific
+checkpoints
+results
+run.ps1
+*.onnx
+
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
