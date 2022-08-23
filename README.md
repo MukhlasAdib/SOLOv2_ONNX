@@ -34,13 +34,29 @@ Create a folder named `checkpoints` inside this directory. Put the models checkp
 
 ## Usage
 
-To convert a SOLOv2 model to ONNX run `convert.py`.
+To convert a SOLOv2 model to ONNX run `export.py`.
 
 ```bash
-python convert.py --cfg path/to/model/config.py --ckpt path/to/model/checkpoint.pth --img path/to/test/image.jpg --out path/to/output.onnx
+python export.py \
+--cfg path/to/model/config.py \
+--ckpt path/to/model/checkpoint.pth \
+--img path/to/test/image.jpg \
+--out path/to/output.onnx \
+--imgsz 800 800 \ # for input 800 x 800 (H, W)
+--device 0 \ # 'cpu'/'0'/...
+--half # remove to use single precision
 ```
 
 If you are using pre-trained model, normally the config path is like `mmdetection/configs/solov2/[$your_model_config]`. You can also use the image in `mmdetection\demo\demo.jpg` for the test image. Check [this official documentation](https://github.com/open-mmlab/mmdetection/tree/master/configs/solov2) to see the list of the available config files.
+
+To try making inference, use `infer.py`
+
+```bash
+python infer.py \
+--onnx path/to/model.onnx \
+--inputs path/to/input/folder \
+--results path/to/results/folder
+```
 
 ## Known issue(s)
 

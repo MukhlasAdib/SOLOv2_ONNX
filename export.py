@@ -15,32 +15,43 @@ from mmdet.apis import init_detector
 from utils.data_processing import solov2_preprocess
 from utils.patches import mock_get_results_single
 
+from mmcv.runner import wrap_fp16_model
 
 torch.no_grad()
 
 
-def validate_data(infer_size):
+def validate_data(infer_size, device, half):
     assert len(infer_size) == 2, "Image size must be in format of (H, W)"
     assert (
         infer_size[0] % 32 == 0 and infer_size[1] % 32 == 0
     ), "Image size must be divisible by 32"
+    if half:
+        assert device != "cpu", "Half precision cannot be used with CPU"
 
 
-def generate_inputs(image_path, target_size=(800, 800)):
+def half_handler(model, img):
+    img = img.half()
+    wrap_fp16_model(model)
+    model = model.half()
+    return model, img
+
+
+def generate_inputs(image_path, target_size=(800, 800), device="cpu"):
     """Generate input data
     target_size is in H x W"""
     img = cv2.imread(image_path)
     img = solov2_preprocess(img, target_size)
     img = torch.from_numpy(img)
+    img = img.to(device)
     img_meta = {"ori_shape": (*target_size, 3), "img_shape": (*target_size, 3)}
     return img, [img_meta]
 
 
-def create_model(config_path, checkpoint_path, img_metas):
+def create_model(config_path, checkpoint_path, img_metas, device="cpu"):
     model = init_detector(
         config_path,
         checkpoint_path,
-        device="cpu",
+        device=device,
     )
 
     def mock_get_results_single_wrapper(*args, **kwargs):
@@ -60,10 +71,23 @@ def create_model(config_path, checkpoint_path, img_metas):
     return model
 
 
-def main(image_path, config_path, checkpoint_path, output_path, input_size):
-    validate_data(input_size)
-    img, img_metas = generate_inputs(image_path, input_size)
-    model = create_model(config_path, checkpoint_path, img_metas)
+def main(
+    image_path,
+    config_path,
+    checkpoint_path,
+    output_path,
+    input_size,
+    device="cpu",
+    half=False,
+):
+    validate_data(input_size, device, half)
+    if device != "cpu":
+        device = "cuda:" + device
+    img, img_metas = generate_inputs(image_path, input_size, device)
+    model = create_model(config_path, checkpoint_path, img_metas, device)
+    if half:
+        model, img = half_handler(model, img)
+
     torch.onnx.export(
         model,
         img,
@@ -92,10 +116,22 @@ def parse_args():
         default=[800, 800],
         help="image size (h, w), divisible by 32",
     )
+    parser.add_argument(
+        "--half", action="store_true", help="whether to use half precision"
+    )
+    parser.add_argument("--device", default="cpu", help="device to use: `cpu`/`0`/...")
     args = parser.parse_args()
     return args
 
 
 if __name__ == "__main__":
     args = parse_args()
-    main(args.img, args.cfg, args.ckpt, args.out, tuple(args.imgsz))
+    main(
+        args.img,
+        args.cfg,
+        args.ckpt,
+        args.out,
+        tuple(args.imgsz),
+        args.device,
+        args.half,
+    )
