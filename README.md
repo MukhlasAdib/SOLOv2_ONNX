@@ -6,19 +6,19 @@ Converter of SOLOv2 ([paper](https://arxiv.org/abs/2003.10152)) instance segment
 
 Before begin, setup your virtual environment, either using `conda` or `virtualenv`. I used `virtualenv` with Python 3.8. First, install basic dependencies
 
-```
+```bash
 pip install -r requirements.txt
 ```
 
 Then install PyTorch. I tested this project with torch v1.12.1. Older and newer version may also be compatible. Check also [PyTorch installation guide](https://pytorch.org/get-started/locally/).
 
-```
+```bash
 pip install torch==1.12.1+cu113 torchvision==0.13.1+cu113 --extra-index-url https://download.pytorch.org/whl/cu113
 ```
 
 Install `mmcv` and `mmdet`. You can check the [official documentation](https://github.com/open-mmlab/mmdetection/blob/master/docs/en/get_started.md/#Installation).
 
-```
+```bash
 pip install -U openmim
 mim install mmcv-full==1.6.1
 git clone https://github.com/open-mmlab/mmdetection.git
@@ -36,11 +36,11 @@ Create a folder named `checkpoints` inside this directory. Put the models checkp
 
 To convert a SOLOv2 model to ONNX run `convert.py`.
 
-```
+```bash
 python convert.py --cfg path/to/model/config.py --ckpt path/to/model/checkpoint.pth --img path/to/test/image.jpg --out path/to/output.onnx
 ```
 
-If you are using pre-trained model, normally the config path is like `mmdetection/configs/solov2/[$your_model_config]` and you can use the test image in `mmdetection\demo\demo.jpg`. See [this page](https://github.com/open-mmlab/mmdetection/tree/master/configs/solov2) again to see the list of the available config files.
+If you are using pre-trained model, normally the config path is like `mmdetection/configs/solov2/[$your_model_config]`. You can also use the image in `mmdetection\demo\demo.jpg` for the test image. Check [this official documentation](https://github.com/open-mmlab/mmdetection/tree/master/configs/solov2) to see the list of the available config files.
 
 ## Known issue(s)
 

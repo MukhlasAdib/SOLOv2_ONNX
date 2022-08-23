@@ -25,21 +25,29 @@ def generate_inputs(image_path, target_size=(800, 800)):
     norm_std = [58.395, 57.12, 57.375]
     img = cv2.imread(image_path)
 
-    old_size = img.shape[:2]
-    if old_size[0] > old_size[1]:
-        ratio = target_size[0] / old_size[0]
-    else:
-        ratio = target_size[1] / old_size[1]
-    new_size = tuple([int(x * ratio) for x in old_size])
-    img = cv2.resize(img, (new_size[1], new_size[0]))
+    # Resize and pad
+    target_h, target_w = target_size
+    ori_h, ori_w = img.shape[:2]
+    ratio_w = target_w / ori_w
+    ratio_h = target_h / ori_h
 
-    delta_w = target_size[1] - new_size[1]
-    delta_h = target_size[0] - new_size[0]
-    top, bottom = delta_h // 2, delta_h - (delta_h // 2)
-    left, right = delta_w // 2, delta_w - (delta_w // 2)
-    color = [0, 0, 0]
+    # Follow output size of the side with smaller ratio
+    if ratio_w < ratio_h:
+        output_w = target_w
+        output_h = int(ratio_w * ori_h)
+        left = right = 0
+        top = int((target_h - output_h) / 2)
+        bottom = target_h - output_h - top
+    else:
+        output_h = target_h
+        output_w = int(ratio_h * ori_w)
+        left = int((target_w - output_w) / 2)
+        right = target_w - output_w - left
+        top = bottom = 0
+
+    img = cv2.resize(img, (output_w, output_h))
     img = cv2.copyMakeBorder(
-        img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=color
+        img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=[128, 128, 128]
     )
 
     img = img - norm_mean
@@ -77,8 +85,8 @@ def create_model(config_path, checkpoint_path, img_metas):
     return model
 
 
-def main(image_path, config_path, checkpoint_path, output_path):
-    img, img_metas = generate_inputs(image_path)
+def main(image_path, config_path, checkpoint_path, output_path, input_size):
+    img, img_metas = generate_inputs(image_path, input_size)
     model = create_model(config_path, checkpoint_path, img_metas)
     torch.onnx.export(
         model,
@@ -101,10 +109,17 @@ def parse_args():
     parser.add_argument("--ckpt", help="model config path")
     parser.add_argument("--img", help="path to one test image")
     parser.add_argument("--out", help="path to the onnx output")
+    parser.add_argument(
+        "--imgsz",
+        nargs="+",
+        type=int,
+        default=[800, 800],
+        help="image size (h, w), divisible by 32",
+    )
     args = parser.parse_args()
     return args
 
 
 if __name__ == "__main__":
     args = parse_args()
-    main(args.img, args.cfg, args.ckpt, args.out)
+    main(args.img, args.cfg, args.ckpt, args.out, tuple(args.imgsz))
