@@ -1,6 +1,7 @@
 import argparse
 import os
 import shutil
+import time
 from typing import Tuple
 
 import cv2
@@ -13,9 +14,7 @@ from utils.output_processing import format_results, show_result
 
 
 class ORTRunner:
-    def __init__(self, model_path: str, input_size: Tuple[int, int]) -> None:
-        self.input_size = input_size
-
+    def __init__(self, model_path: str) -> None:
         test_model = onnx.load(model_path)
         onnx.checker.check_model(test_model)  # type: ignore
 
@@ -30,6 +29,12 @@ class ORTRunner:
                 "CPUExecutionProvider",
             ],
         )
+        self.input_size = tuple(self.sess.get_inputs()[0].shape[-2:])
+        sess_input_type = self.sess.get_inputs()[0].type
+        if sess_input_type == "tensor(float16)":
+            self.input_type = np.float16
+        else:
+            self.input_type = np.float32
 
     def infer(self, img: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         img = self.preprocess(img)
@@ -40,29 +45,32 @@ class ORTRunner:
 
     def preprocess(self, img: np.ndarray) -> np.ndarray:
         img = solov2_preprocess(img, self.input_size)
-        return img.astype(np.float32)
+        return img.astype(self.input_type)
 
 
-def main(
-    model_path: str, infer_size: Tuple[int, int], input_dir: str, output_dir: str
-) -> None:
+def main(model_path: str, input_dir: str, output_dir: str) -> None:
     if os.path.isdir(output_dir):
         shutil.rmtree(output_dir)
     os.makedirs(output_dir, exist_ok=True)
     image_files = os.listdir(input_dir)
     image_files = [f for f in image_files if f.endswith(".jpg") or f.endswith(".png")]
 
-    model = ORTRunner(model_path, infer_size)
+    model = ORTRunner(model_path)
+    times = []
     for f in image_files:
         img = cv2.imread(os.path.join(input_dir, f))
         img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        start = time.perf_counter()
         labels, masks, scores = model.infer(img)
+        times.append(time.perf_counter() - start)
         formatted = format_results(scores, labels, masks)
 
-        vis = resize_and_pad(img, infer_size)
+        vis = resize_and_pad(img, model.input_size)
         vis = show_result(vis, formatted)
         vis = cv2.cvtColor(vis, cv2.COLOR_BGR2RGB)
         cv2.imwrite(os.path.join(output_dir, f), vis)
+    avg_time = np.mean(times)
+    print(f"Average latency: {avg_time} s")
 
 
 def parse_args():
@@ -70,11 +78,10 @@ def parse_args():
     parser.add_argument("--onnx", help="path to the ONNX model")
     parser.add_argument("--inputs", help="path to folder containing input images")
     parser.add_argument("--results", help="folder to save the results")
-    parser.add_argument("--imgsz", nargs="+", type=int, help="input size of the model")
     args = parser.parse_args()
     return args
 
 
 if __name__ == "__main__":
     args = parse_args()
-    main(args.onnx, args.imgsz, args.inputs, args.results)
+    main(args.onnx, args.inputs, args.results)
