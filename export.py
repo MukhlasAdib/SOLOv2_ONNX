@@ -8,56 +8,31 @@ https://github.com/open-mmlab/mmdetection
 import argparse
 
 import cv2
-import numpy as np
 import torch
 
 from mmdet.apis import init_detector
 
-from patches import mock_get_results_single
+from utils.data_processing import solov2_preprocess
+from utils.patches import mock_get_results_single
+
 
 torch.no_grad()
+
+
+def validate_data(infer_size):
+    assert len(infer_size) == 2, "Image size must be in format of (H, W)"
+    assert (
+        infer_size[0] % 32 == 0 and infer_size[1] % 32 == 0
+    ), "Image size must be divisible by 32"
 
 
 def generate_inputs(image_path, target_size=(800, 800)):
     """Generate input data
     target_size is in H x W"""
-    norm_mean = [123.675, 116.28, 103.53]
-    norm_std = [58.395, 57.12, 57.375]
     img = cv2.imread(image_path)
-
-    # Resize and pad
-    target_h, target_w = target_size
-    ori_h, ori_w = img.shape[:2]
-    ratio_w = target_w / ori_w
-    ratio_h = target_h / ori_h
-
-    # Follow output size of the side with smaller ratio
-    if ratio_w < ratio_h:
-        output_w = target_w
-        output_h = int(ratio_w * ori_h)
-        left = right = 0
-        top = int((target_h - output_h) / 2)
-        bottom = target_h - output_h - top
-    else:
-        output_h = target_h
-        output_w = int(ratio_h * ori_w)
-        left = int((target_w - output_w) / 2)
-        right = target_w - output_w - left
-        top = bottom = 0
-
-    img = cv2.resize(img, (output_w, output_h))
-    img = cv2.copyMakeBorder(
-        img, top, bottom, left, right, cv2.BORDER_CONSTANT, value=[128, 128, 128]
-    )
-
-    img = img - norm_mean
-    img = img / norm_std
-
-    img = np.transpose(img, [2, 0, 1])
-    img = np.expand_dims(img, 0)
-    img = torch.from_numpy(img.astype(np.float32))
+    img = solov2_preprocess(img, target_size)
+    img = torch.from_numpy(img)
     img_meta = {"ori_shape": (*target_size, 3), "img_shape": (*target_size, 3)}
-
     return img, [img_meta]
 
 
@@ -86,6 +61,7 @@ def create_model(config_path, checkpoint_path, img_metas):
 
 
 def main(image_path, config_path, checkpoint_path, output_path, input_size):
+    validate_data(input_size)
     img, img_metas = generate_inputs(image_path, input_size)
     model = create_model(config_path, checkpoint_path, img_metas)
     torch.onnx.export(
