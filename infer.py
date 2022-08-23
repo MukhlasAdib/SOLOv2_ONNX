@@ -56,6 +56,11 @@ def main(model_path: str, input_dir: str, output_dir: str) -> None:
     image_files = [f for f in image_files if f.endswith(".jpg") or f.endswith(".png")]
 
     model = ORTRunner(model_path)
+
+    for _ in range(5):
+        img = cv2.imread(os.path.join(input_dir, image_files[0]))
+        labels, masks, scores = model.infer(img)
+
     times = []
     for f in image_files:
         img = cv2.imread(os.path.join(input_dir, f))
