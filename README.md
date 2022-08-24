@@ -44,10 +44,11 @@ python export.py \
 --out path/to/output.onnx \
 --imgsz 800 800 \ # for input 800 x 800 (H, W)
 --device 0 \ # 'cpu'/'0'/...
---half # remove to use single precision
+--half  \ # remove to use single precision
+--simplify # remove to disable model simplify
 ```
 
-If you are using pre-trained model, normally the config path is like `mmdetection/configs/solov2/[$your_model_config]`. You can also use the image in `mmdetection\demo\demo.jpg` for the test image. Check [this official documentation](https://github.com/open-mmlab/mmdetection/tree/master/configs/solov2) to see the list of the available config files.
+If you are using pre-trained model, normally the config path is like `mmdetection/configs/solov2/[$your_model_config]`. You can also use the image in `mmdetection/demo/demo.jpg` for the test image. Check [this official documentation](https://github.com/open-mmlab/mmdetection/tree/master/configs/solov2) to see the list of the available config files.
 
 To try making inference, use `infer.py`
 
