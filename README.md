@@ -48,7 +48,7 @@ python export.py \
 --simplify # remove to disable model simplify
 ```
 
-If you are using pre-trained model, normally the config path is like `mmdetection/configs/solov2/[$your_model_config]`. You can also use the image in `mmdetection/demo/demo.jpg` for the test image. Check [this official documentation](https://github.com/open-mmlab/mmdetection/tree/master/configs/solov2) to see the list of the available config files.
+If you are using pre-trained model, normally the config path is like `mmdetection/configs/solov2/[$your_model_config]`. Check [this official documentation](https://github.com/open-mmlab/mmdetection/tree/master/configs/solov2) to see the list of the available config files. You can also use the image in `mmdetection/demo/demo.jpg` for the test image.
 
 To try making inference, use `infer.py`
 
