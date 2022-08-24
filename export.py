@@ -8,6 +8,8 @@ https://github.com/open-mmlab/mmdetection
 import argparse
 
 import cv2
+import onnx
+import onnxsim
 import torch
 
 from mmdet.apis import init_detector
@@ -71,6 +73,15 @@ def create_model(config_path, checkpoint_path, img_metas, device="cpu"):
     return model
 
 
+def simplify_model(onnx_file):
+    print("Simplifying model...")
+    model_onnx = onnx.load(onnx_file)
+    onnx.checker.check_model(model_onnx)  # type: ignore
+    model_onnx, check = onnxsim.simplify(model_onnx)
+    assert check, "onnx-simplifier check failed"
+    onnx.save(model_onnx, onnx_file)
+
+
 def main(
     image_path,
     config_path,
@@ -79,6 +90,7 @@ def main(
     input_size,
     device="cpu",
     half=False,
+    simplify=False,
 ):
     validate_data(input_size, device, half)
     if device != "cpu":
@@ -97,6 +109,9 @@ def main(
         output_names=["masks", "labels", "scores"],
         dynamic_axes=None,
     )
+
+    if simplify:
+        simplify_model(output_path)
 
     print()
     print(f"Image metas: {img_metas}")
@@ -119,6 +134,9 @@ def parse_args():
     parser.add_argument(
         "--half", action="store_true", help="whether to use half precision"
     )
+    parser.add_argument(
+        "--simplify", action="store_true", help="whether to simplify the model"
+    )
     parser.add_argument("--device", default="cpu", help="device to use: `cpu`/`0`/...")
     args = parser.parse_args()
     return args
@@ -134,4 +152,5 @@ if __name__ == "__main__":
         tuple(args.imgsz),
         args.device,
         args.half,
+        args.simplify,
     )

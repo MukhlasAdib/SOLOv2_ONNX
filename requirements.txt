@@ -1,4 +1,5 @@
 numpy == 1.23.2
 onnx == 1.12.0
 onnxruntime-gpu == 1.12.1
+onnx-simplifier
 opencv-python == 4.5.5.64
